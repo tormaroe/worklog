@@ -1,6 +1,6 @@
 require 'date'
 
-$ACTIVE_FILE = 'timer.log'
+$ACTIVE_FILE = 'hours.log'
 
 module WorkLog
   def self.run
