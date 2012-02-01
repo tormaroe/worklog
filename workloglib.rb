@@ -71,12 +71,10 @@ end
 def prompt_new_entry
   entry = Entry.new
   
-  print 'Today [default] or another day : '
-  entry.date = gets.chomp
-  entry.date = Date.today if entry.date == ''
+  entry.date = prompt_valid_date 'Today [default] or another day (YYYY-MM-DD) : '
 
-  entry.time_from = prompt_valid_time 'From HH:MM : '
-  entry.time_to = prompt_valid_time   '  To HH:MM : '
+  entry.time_from = prompt_valid_time 'From HH:mm : '
+  entry.time_to = prompt_valid_time   '  To HH:mm : '
 
   print 'Comment : '
   entry.comment = gets.chomp
@@ -84,11 +82,22 @@ def prompt_new_entry
   return entry
 end
 
+def prompt_valid_date msg
+  input = prompt_with_validation msg, /^(?:(\d{4}).?(\d{2}).?(\d{2}))?$/
+  return Date.today if input[0] == ''
+  return "#{input[1]}-#{input[2]}-#{input[3]}"
+end
+
 def prompt_valid_time msg
+  input = prompt_with_validation msg, /^(\d\d).?(\d\d)$/
+  return "#{input[1]}:#{input[2]}"
+end
+
+def prompt_with_validation msg, format
   while true
     print msg
-    input = /^(\d\d).?(\d\d)$/.match(gets.chomp)
-    return "#{input[1]}:#{input[2]}" if input
+    input = format.match(gets.chomp)
+    return input if input
     puts "** ERROR - INVALID FORMAT - PLEASE TRY AGAIN!"
   end
 end
