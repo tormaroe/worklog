@@ -48,11 +48,23 @@ class Entry
     :comment
 
   def to_s
-    "#{date}\t#{time_from}\t#{time_to}\t#{comment}\n"
+    "#{date}\t#{time_from}\t#{time_to}\t#{duration}\t#{comment}\n"
   end
 
   def save
     File.open($ACTIVE_FILE, 'a') {|f| f.write self }
+  end
+
+  def duration
+    from_hour = @time_from[0..1].to_i
+    from_min  = @time_from[3..4].to_i
+    to___hour = @time_to[0..1].to_i
+    to___min  = @time_to[3..4].to_i
+    minutes_spent = (to___hour - from_hour) * 60
+    minutes_spent += to___min - from_min
+    hours_spent = minutes_spent / 60
+    minutes_spent -= hours_spent * 60
+    "#{hours_spent}h #{minutes_spent}m"
   end
 end
 

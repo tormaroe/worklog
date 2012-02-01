@@ -34,4 +34,8 @@ Command.define :archive, "Dump current work log to archive file" do
   end
 end
 
+Command.define :test, "(Temporary test method for duration)" do
+  puts prompt_new_entry
+end
+
 WorkLog.run
