@@ -1,7 +1,7 @@
 require './workloglib.rb'
 
 
-Command.define :add, "Adds an entry to the work log" do
+Command.define :add, "Adds an entry to the current work log" do
   prompt_new_entry.save
 end
 
