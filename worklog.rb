@@ -35,7 +35,7 @@ Command.define :archive, "Dump current work log to archive file" do
 end
 
 Command.define :test, "This is just a test" do
-  puts "test test test"
+  puts "test test test test"
 end
 
 WorkLog.run
