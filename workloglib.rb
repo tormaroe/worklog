@@ -70,16 +70,15 @@ end
 
 def prompt_new_entry
   entry = Entry.new
-  
   entry.date = prompt_valid_date 'Today [default] or another day (YYYY-MM-DD) : '
-
   entry.time_from = prompt_valid_time 'From HH:mm : '
   entry.time_to = prompt_valid_time   '  To HH:mm : '
-
-  print 'Comment : '
-  entry.comment = gets.chomp
-
+  entry.comment = prompt_required 'Comment : '
   return entry
+end
+
+def prompt_required msg
+  return prompt_with_validation(msg, /^.+$/)[0]
 end
 
 def prompt_valid_date msg
