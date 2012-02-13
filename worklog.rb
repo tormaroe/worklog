@@ -1,8 +1,13 @@
 require './workloglib.rb'
 
-
 Command.define :add, "Adds an entry to the current work log" do
   prompt_new_entry.save
+end
+
+Command.define :addn, "Add one or more entries to the current work log" do
+  begin
+    prompt_new_entry.save
+  end while Prompt.yes_or_no?("Add another one")
 end
 
 Command.define :tail, "Display the current work log" do

@@ -78,6 +78,10 @@ def prompt_new_entry
 end
 
 module Prompt
+  def self.yes_or_no? msg
+    ['Y','y'].include? with_validation("#{msg} [Yes/No]? " , /^[Y|N|y|n]/)[0]
+  end
+
   def self.required msg
     with_validation(msg, /^.+$/)[0]
   end
