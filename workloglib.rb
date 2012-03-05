@@ -1,6 +1,183 @@
 require 'date'
+require 'yaml/store'
 
 $ACTIVE_FILE = 'hours.log'
+
+class ToDo
+  attr_reader :db, :end
+  def initialize dbFile
+    @dbFile = dbFile
+    @log_file = "#{dbFile}.log"
+    @db = YAML::Store.new @dbFile
+  end
+  def prompt
+    render
+    get_command.execute
+  end
+  def get_command
+    command = gets.chomp
+    case command
+    when /^(quit)|q$/
+      @end = true
+    when /^add /
+      return AddTodoCommand.new(command[4..-1], self)
+    when /^done /
+      return DoneCommand.new(command[5..-1], self)
+    when /^move /
+      return MoveCommand.new(command[5..-1], self)
+    when /^delete /
+      return DeleteCommand.new(command[7..-1], self)
+    when /^new-day/
+      return NewDayCommand.new(self)
+    end
+    return NilCommand.new
+  end
+  def section_desc s
+    {"A" => "-- [A] TODAY       --",
+     "B" => "-- [B] TOMORROW    --",
+     "C" => "-- [C] IN TWO DAYS --",
+     "D" => "-- [D] FUTURE      --"}[s]
+  end
+  def render
+    puts '----------------------------------------------'
+    todo_index = 1
+    @db.transaction(true) do
+      @db.roots.each do |section|
+        puts section_desc(section)
+        @db[section].each do |t|
+          puts "   [#{todo_index}] #{t}"
+          todo_index += 1
+        end
+        puts
+      end
+    end
+    puts "----------------------------------------------"
+    puts " add Z text    | done #        | move # Z"
+    puts " new-day       | delete #      | quit"
+    puts "----------------------------------------------"
+    print ">> "
+  end
+  def log txt
+    File.open(@log_file, 'a') {|f| f.puts "#{DateTime.now}: #{txt}" }
+  end
+
+  class NilCommand
+    def execute
+    end
+  end
+
+  class AddTodoCommand
+    def initialize arg, todo
+      @section = arg[0].upcase
+      @text = arg[2..-1]
+      @todo = todo
+    end
+    def execute
+      @todo.db.transaction do
+        execute_existing_transaction
+        @todo.log "Added \"#{@text}\" to #{@section}"
+      end
+    end
+    def execute_existing_transaction
+      @todo.db[@section] ||= Array.new
+      @todo.db[@section] << @text
+    end
+  end
+
+  class DoneCommand
+    def initialize arg, todo
+      @done_index = arg.to_i
+      @todo = todo
+    end
+    def execute
+      todo_index = 0
+      @todo.db.transaction do
+        @todo.db.roots.each do |section|
+          @todo.db[section].each_with_index do |t,i|
+            todo_index += 1
+            if todo_index == @done_index
+              @todo.db[section].delete_at i
+              puts "* Removing #{t}"
+              @todo.log "** Completed \"#{t}\""
+            end
+          end
+          puts
+        end
+      end
+    end
+  end
+
+
+  class DeleteCommand
+    def initialize arg, todo
+      @done_index = arg.to_i
+      @todo = todo
+    end
+    def execute
+      todo_index = 0
+      @todo.db.transaction do
+        @todo.db.roots.each do |section|
+          @todo.db[section].each_with_index do |t,i|
+            todo_index += 1
+            if todo_index == @done_index
+              @todo.db[section].delete_at i
+              puts "* Deleting #{t}"
+              @todo.log "Deleted \"#{t}\""
+            end
+          end
+          puts
+        end
+      end
+    end
+  end
+
+  class MoveCommand
+    def initialize arg, todo
+      p arg
+      tokens = /^(\d+) ([ABCDabcd])$/.match(arg)
+      @from_index = tokens[1].to_i
+      @to_section = tokens[2]
+      @todo = todo
+    end
+    def execute
+      todo_index = 0
+      @todo.db.transaction do
+        @todo.db.roots.each do |section|
+          @todo.db[section].each_with_index do |t,i|
+            todo_index += 1
+            if todo_index == @from_index
+              @todo.db[section].delete_at i
+              AddTodoCommand.new("#{@to_section} #{t}", @todo).execute_existing_transaction
+              puts "* Moved \"#{t}\" from #{section} to #{@to_section}"
+              @todo.log "* Moved \"#{t}\" from #{section} to #{@to_section}"
+            end
+          end
+        end
+      end
+    end
+  end
+
+  class NewDayCommand
+    def initialize todo
+      @todo = todo
+    end
+    def execute
+      @todo.db.transaction do
+        @todo.db["A"].push(*@todo.db["B"])
+        @todo.db["B"] = []
+
+        @todo.db["B"].push(*@todo.db["C"])
+        @todo.db["C"] = []
+
+        puts "Moved tasks up one level"
+        puts "REVIEW FUTURE section!!!"
+
+        @todo.log "Advanced to a new day!"
+      end
+    end
+  end
+end
+
 
 module WorkLog
   def self.run
