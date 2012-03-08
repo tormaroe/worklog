@@ -4,11 +4,22 @@ require 'yaml/store'
 $ACTIVE_FILE = 'hours.log'
 
 class ToDo
-  attr_reader :db, :end
+  attr_reader :db, :end, :undo_list
   def initialize dbFile
+    @undo_list = []
     @dbFile = dbFile
     @log_file = "#{dbFile}.log"
+    db_exists = File.exists? @dbFile
     @db = YAML::Store.new @dbFile
+
+    unless db_exists
+      @db.transaction do
+        @db["A"] = []
+        @db["B"] = []
+        @db["C"] = []
+        @db["D"] = []
+      end
+    end
   end
   def prompt
     render
@@ -19,27 +30,24 @@ class ToDo
     case command
     when /^(quit)|q$/
       @end = true
-    when /^add /
-      return AddTodoCommand.new(command[4..-1], self)
-    when /^done /
-      return DoneCommand.new(command[5..-1], self)
-    when /^move /
-      return MoveCommand.new(command[5..-1], self)
-    when /^delete /
-      return DeleteCommand.new(command[7..-1], self)
-    when /^new-day/
-      return NewDayCommand.new(self)
+      NilCommand.new 
+    when /^add /    ; AddTodoCommand.new(command[4..-1], self)
+    when /^done /   ; DoneCommand.new(command[5..-1], self)
+    when /^move /   ; MoveCommand.new(command[5..-1], self)
+    when /^delete / ; DeleteCommand.new(command[7..-1], self)
+    when /^new-day/ ; NewDayCommand.new(self)
+    when /^undo/ ; UndoCommand.new(self)
+    else 
+      NilCommand.new 
     end
-    return NilCommand.new
   end
   def section_desc s
-    {"A" => "-- [A] TODAY       --",
-     "B" => "-- [B] TOMORROW    --",
-     "C" => "-- [C] IN TWO DAYS --",
-     "D" => "-- [D] FUTURE      --"}[s]
+    {"A" => "-- [A] TODAY       ----------------------------------",
+     "B" => "-- [B] TOMORROW    ----------------------------------",
+     "C" => "-- [C] IN TWO DAYS ----------------------------------",
+     "D" => "-- [D] FUTURE      ----------------------------------"}[s]
   end
   def render
-    puts '----------------------------------------------'
     todo_index = 1
     @db.transaction(true) do
       @db.roots.each do |section|
@@ -51,11 +59,11 @@ class ToDo
         puts
       end
     end
-    puts "----------------------------------------------"
-    puts " add Z text    | done #        | move # Z"
-    puts " new-day       | delete #      | quit"
-    puts "----------------------------------------------"
-    print ">> "
+    puts "-----------------------------------------------------"
+    puts " add Z text  | done #      | move # Z   | delete #"
+    puts " new-day     | undo        |            | quit"
+    puts "-----------------------------------------------------"
+    print "TODO>> "
   end
   def log txt
     File.open(@log_file, 'a') {|f| f.puts "#{DateTime.now}: #{txt}" }
@@ -77,6 +85,13 @@ class ToDo
         execute_existing_transaction
         @todo.log "Added \"#{@text}\" to #{@section}"
       end
+
+      @todo.undo_list.push(Proc.new { 
+        @todo.log "UNDOING ADD COMMAND"
+        @todo.db.transaction do
+          @todo.db[@section].pop    
+        end
+      })
     end
     def execute_existing_transaction
       @todo.db[@section] ||= Array.new
@@ -91,18 +106,30 @@ class ToDo
     end
     def execute
       todo_index = 0
+      done_section_4_undo = nil
+      todo_text_4_undo = nil
       @todo.db.transaction do
         @todo.db.roots.each do |section|
           @todo.db[section].each_with_index do |t,i|
             todo_index += 1
             if todo_index == @done_index
               @todo.db[section].delete_at i
-              puts "* Removing #{t}"
+              puts "* Completed #{t}"
               @todo.log "** Completed \"#{t}\""
+              done_section_4_undo = section
+              todo_text_4_undo = t
             end
           end
-          puts
         end
+      end
+
+      if done_section_4_undo
+        @todo.undo_list.push(Proc.new { 
+          @todo.log "UNDOING DONE COMMAND"
+          @todo.db.transaction do
+            @todo.db[done_section_4_undo] << todo_text_4_undo
+          end
+        })
       end
     end
   end
@@ -115,6 +142,8 @@ class ToDo
     end
     def execute
       todo_index = 0
+      done_section_4_undo = nil
+      todo_text_4_undo = nil
       @todo.db.transaction do
         @todo.db.roots.each do |section|
           @todo.db[section].each_with_index do |t,i|
@@ -123,11 +152,20 @@ class ToDo
               @todo.db[section].delete_at i
               puts "* Deleting #{t}"
               @todo.log "Deleted \"#{t}\""
+              done_section_4_undo = section
+              todo_text_4_undo = t
             end
           end
           puts
         end
       end
+
+      @todo.undo_list.push(Proc.new { 
+        @todo.log "UNDOING DELETE COMMAND"
+        @todo.db.transaction do
+          @todo.db[done_section_4_undo] << todo_text_4_undo
+        end
+      })
     end
   end
 
@@ -173,6 +211,19 @@ class ToDo
         puts "REVIEW FUTURE section!!!"
 
         @todo.log "Advanced to a new day!"
+      end
+    end
+  end
+
+  class UndoCommand
+    def initialize todo
+      @todo = todo
+    end
+    def execute
+      if @todo.undo_list.size > 0
+        @todo.undo_list.pop.call
+      else
+        puts "** NO UNDO ON STACK **"
       end
     end
   end

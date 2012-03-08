@@ -40,14 +40,8 @@ Command.define :archive, "Dump current work log to archive file" do
 end
 
 Command.define :todo, "Start interactive TO-DO mode" do
-  # add todo-log file
-  # add operations¨
-  # add "new day"
-  # add undo
   todo = ToDo.new 'todo.yaml'
-  begin
-    todo.prompt
-  end until todo.end
+  todo.prompt until todo.end
 end
 
 WorkLog.run
