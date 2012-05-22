@@ -1,6 +1,8 @@
 Worklog
 =======
 
+TODO: Add info about todo feature.
+
 This is a small script/tool I've created to make it easy to register what I spend my time on. I hate most existing tools I'm forced to use you see, but this script stays out of the way, but still prompts me for info twice a day in a friendly way. When I then need to update the company tracking tool my script has created a nice file which I manually transfer (like once a month).
 
 Personally I'm running the tool (with the ADDN option - see below) as a scheduled task twice a day - at lunch and before I go home. It pops up a command line where I enter my stuff, and the forget about it until the next time.
