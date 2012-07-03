@@ -34,3 +34,5 @@ License
 Free to use however you like, but it's nice if you tell me about it, and also if you attribute me. I can not promice that it'll work as expected, and take absolutely no responsibility for what might happen when you use it.
 
 If you fork it and does something nice with it, please send me a pull request!
+
+(ping)
