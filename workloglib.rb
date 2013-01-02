@@ -247,7 +247,7 @@ class Command
   attr_accessor :description, :proc
   def initialize description, &block
     @description = description
-    @proc = Proc.new block
+    @proc = block
   end
   def call
     @proc.call
