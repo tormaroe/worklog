@@ -1,3 +1,7 @@
+path = File.expand_path $0
+path = File.dirname path
+Dir.chdir path
+
 require './workloglib.rb'
 
 Command.define :add, "Adds an entry to the current work log" do
